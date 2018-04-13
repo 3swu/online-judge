@@ -24,7 +24,8 @@ int get_process_memsize(int pid){
     char substr_buf[10] = {0};
     if(fd == NULL){
         printf("open file error\n");
-        exit(1);
+        // exit(1);
+        return 0;
     }
 
     while(!feof(fd)){

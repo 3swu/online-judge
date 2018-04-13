@@ -12,23 +12,9 @@
 #include <sys/syscall.h>
 #include <sys/stat.h>
 #include "get_process_memsize.h"
+//#include "error_and_result.h"
+#include "outfile_compare.h"
 
-
-#define ERR_NLT  101        //No Language Type
-#define ERR_FE   102        //Fork Error
-#define ERR_CRE  103        //Chroot Error
-#define ERR_MFFE 104        //Mkfifo Errori
-#define ERR_OFFE 105        //Open FIFO Error
-#define ERR_PTE  106        //Ptrace Error
-#define ERR_ER   107        //Execv Error
-
-#define RS_CE    201        //Compiel error
-#define RS_TLE   202        //Time Limit Exceeded
-#define RS_MLE   203        //Memory Limit Exceeded
-#define RS_RE    204        //Runtime Error
-#define RS_OLE   205        //Output Limit Exceeded
-#define RS_AC    206        //Accepted
-#define RS_PE    207        //Presentation Error
 
 #define FIFO_STDIN     "fifo_stdin"     //定义父子进程管道文件名
 #define FIFO_STDOUT    "fifo_stdout"
@@ -38,6 +24,10 @@
 char* infile_name = NULL;
 char* outfile_name = NULL;
 char* temdir_path = NULL;
+char* stdin_name = NULL;
+char* stdout_name = NULL;
+char* stderr_name = NULL;
+char* std_ans = NULL;
 
 int time_limit, memory_limit;
 int file_type = 0;//语言类别 1:C/2:C++
@@ -47,11 +37,11 @@ uid_t parent_uid;
 gid_t parent_gid;
 
 //函数声明
-void init_variable(char*, char*, char*, int, int, int);
+void init_variable(char**);
 void prog_compile();
-void error(char*, int);
+// void error(char*, int);
 void execute_prog();
-void return_result(char*, int);
+// void return_result(char*, int);
 int syscall_illegal(int);
 
 int LANG_CV[256] = {0,1,2,3,4,5,8,9,11,12,20,21,59,63,89,158,231,240, SYS_time, SYS_read, SYS_uname, SYS_write, SYS_open,
@@ -59,13 +49,17 @@ int LANG_CV[256] = {0,1,2,3,4,5,8,9,11,12,20,21,59,63,89,158,231,240, SYS_time, 
                     SYS_mmap, SYS_fstat, SYS_set_thread_area, 252, SYS_arch_prctl, 0 };
 
 /* 初始化全局变量 */
-void init_variable(char* inf_name, char* outf_name, char* tem_path, int t_limit, int mem_limit, int f_type){
-    infile_name = inf_name;
-    outfile_name = outf_name;
-    temdir_path = tem_path;
-    time_limit = t_limit;
-    memory_limit = mem_limit;
-    file_type = f_type;
+void init_variable(char** params){
+    infile_name = params[0];
+    outfile_name = params[1];
+    temdir_path = params[2];
+    stdin_name = params[3];
+    stdout_name = params[4];
+    stderr_name = params[5];
+    std_ans = params[6];
+    time_limit = atoi(params[7]);
+    memory_limit = atoi(params[8]);
+    file_type = atoi(params[9]);
 }
 
 /* 编译源文件 */
@@ -97,14 +91,6 @@ void prog_compile(){
 
 }
 
-void error(char* error_msg, int error_code){
-    _exit(error_code);
-}
-
-void return_result(char* result_msg, int result_code){
-    _exit(result_code);
-}
-
 void execute_prog(){
     int status;
     child_pid = fork();
@@ -124,16 +110,18 @@ void execute_prog(){
         //标准输入输出错误重定向到文件
 //        if(mkfifo(FIFO_STDIN, 0777)<0 || mkfifo(FIFO_STDOUT, 0777)<0 || mkfifo(FIFO_STDERR, 0777)<0)
 //            error("mkfifo error", ERR_MFFE);
-//
-//        int fd_in, fd_out, fd_err;
-//        fd_in = open(FIFO_STDIN, O_RDONLY);
-//        fd_out = open(FIFO_STDOUT, O_WRONLY);
-//        fd_err = open(FIFO_STDERR, O_WRONLY);
-//        if(fd_in == -1 || fd_out == -1 || fd_err == -1)
-//            error("open fifo error", ERR_OFFE);
-//        dup2(fd_in, 0);
-//        dup2(fd_out, 1);
-//        dup2(fd_err, 2);
+//    
+        // printf("%s\n%s\n%s\n", stdin_name, stdout_name, stderr_name);
+
+        int fd_in, fd_out, fd_err;
+        fd_in = open(stdin_name, O_RDONLY);
+        fd_out = open(stdout_name, O_WRONLY);
+        fd_err = open(stderr_name, O_WRONLY);
+        if(fd_in == -1 || fd_out == -1 || fd_err == -1)
+            error("open fifo error", ERR_OFFE);
+        dup2(fd_in, 0);
+        dup2(fd_out, 1);
+        dup2(fd_err, 2);
 
         // struct rlimit r;
         // getrlimit(RLIMIT_CPU, &r);
@@ -150,8 +138,8 @@ void execute_prog(){
         if(ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0)
             error("ptrace error", ERR_PTE);
 
-        char path[100] = {'\n'};
-        sprintf(path, "%s/%s", temdir_path, outfile_name);
+        // char path[100] = {'\n'};
+        // sprintf(path, "%s/%s", temdir_path, outfile_name);
 
         if(execv(outfile_name, NULL) == -1)
 //            printf("execv error\n");
@@ -188,7 +176,17 @@ void execute_prog(){
             }
 
             if(WIFEXITED(status)){ //正常退出
-                //TODO
+                char out_path[100] = {'\0'}, ans_path[100] = {'\0'};
+                sprintf(out_path, "%s/%s", temdir_path, stdout_name);
+                sprintf(ans_path, "%s/%s", temdir_path, std_ans);
+                
+                if(file_compare(out_path, ans_path)){ //答案与标准不同
+                    printf("Output Limit Exceeded\n");
+                    return_result("Output Limit Exceeded", RS_OLE);
+                }
+                printf("Accepted\n");
+                return_result("Accepted", RS_AC);
+
                 printf("child process exit normally with signal %d", WEXITSTATUS(status));
                 exit(0);
             }
@@ -230,7 +228,7 @@ void execute_prog(){
                 kill(child_pid, SIGKILL);
                 return_result("Runtime Error", RS_RE);
             }else{
-                printf("syscall_id = %d\n", syscall_id);
+                printf("syscall_id = %ld\n", syscall_id);
             }
             //继续监视子进程
             ptrace(PTRACE_SYSCALL, child_pid, NULL, NULL);
@@ -253,7 +251,11 @@ int syscall_illegal(int callid){
 }
 
 int main(int args, char* argv[]){
-    init_variable(argv[1], argv[2], argv[3], atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
+    char* params[10] = {"\0"};
+    for(int i=1; i<12; ++i){
+        params[i-1] = argv[i];
+    }
+    init_variable(params);
     prog_compile();
     execute_prog();
 }
