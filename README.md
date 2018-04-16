@@ -1,6 +1,3 @@
-# online-judge
-A simple Online Judge core
----
 ## About
 
 + 这是一个Online Judge系统的判题部分
