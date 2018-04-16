@@ -71,21 +71,23 @@ void prog_compile(){
     else if(file_type == 1){ //C编译
         char cmd[100];
         sprintf(infile_path, "%s/%s", temdir_path, infile_name);
-        char outfile_path[100];
+        char* outfile_path = (char*) malloc (100 * sizeof(char));
         sprintf(outfile_path, "%s/%s", temdir_path, outfile_name);
         sprintf(cmd, "gcc -O2 -w -static -fmax-errors=3 -std=c11 %s -lm -o %s", infile_path, outfile_path);
         system(cmd);
-        if(open(outfile_path, O_RDONLY, 0644) == -1) // 编译失败 文件不存在
+        
+        if(access(outfile_path, 0) != 0) // 编译失败 文件不存在 
             return_result("compile error", RS_CE);
+    
     }
     else if(file_type == 2){ //C++编译
         char cmd[100];
         sprintf(infile_path, "%s/%s", temdir_path, infile_name);
-        char outfile_path[100];
+        char* outfile_path = (char*) malloc (100 * sizeof(char));
         sprintf(outfile_path, "%s/%s", temdir_path, outfile_name);
         sprintf(cmd, "g++ -O2 -w -static -fmax-errors=3 -std=c++14 %s -lm -o %s", infile_path, outfile_path);
         system(cmd);
-        if(open(outfile_path, O_RDONLY, 0644) == -1)
+        if(access(outfile_path, 0) != 0)
             return_result("compile error", RS_CE);
     }
 
@@ -94,7 +96,6 @@ void prog_compile(){
 void execute_prog(){
     int status;
     child_pid = fork();
-    printf("child_pid: %d\n", child_pid);
     if(child_pid == -1)
         error("fork error", ERR_FE);
 
@@ -225,10 +226,10 @@ void execute_prog(){
 
             //判断非法系统调用
             if(syscall_id != -1 && syscall_illegal(syscall_id)){
+                printf("Illegal system call: %d\n", syscall_id);
                 kill(child_pid, SIGKILL);
                 return_result("Runtime Error", RS_RE);
             }else{
-                printf("syscall_id = %ld\n", syscall_id);
             }
             //继续监视子进程
             ptrace(PTRACE_SYSCALL, child_pid, NULL, NULL);
