@@ -69,3 +69,11 @@
 
 4. 传输完成，关闭连接
 
+
+## Compile options
+
+评测机对于C或者C++源文件，采用如下的编译方式：
+
+- C：`gcc -O2 -w -static -fmax-errors=3 -std=c11 {file} -lm -o {file}`
+- C++：`g++ -O2 -w -static -fmax-errors=3 -std=c++14 {file} -lm -o {file}`
+
