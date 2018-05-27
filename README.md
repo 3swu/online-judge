@@ -9,9 +9,8 @@
 + Clone这个项目
 + 在`config`文件第一行设置服务器端口
 + 在`config`文件第二行设置判题临时文件存放路径
-+ 编译`judger.c`文件为`judger`
-+ 编译`judge-server.c`文件为`judge-server`
-+ 以管理权限运行`judge-server`
++ 在项目文件夹中运行`sudo make`命令来构建项目
++ 运行`sudo judge-server`
 
 ## Protocol
 
@@ -69,6 +68,59 @@
 
 4. 传输完成，关闭连接
 
+## Example
+假设在某个目录中已经存在一个需要评测的源文件、一个输入文件、一个答案文件，分别命名为`1.c`, `1.in`, `1.ans`,并且评测端已经运行，则在该目录下使用以下Python程序可以测试：
+```python
+import socket
+import struct
+import os
+import time
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+s.connect(("127.0.0.1", 6666))
+
+username = "wulei"
+pro_id = "1000"
+type = "1"
+time_limit = "100"
+mem_limit = "500000"
+source_str = open("1.c", "r").read()
+in_str = open("1.in", "r").read()
+ans_str = open("1.ans", "r").read()
+
+source_len = os.path.getsize("1.c")
+in_len = os.path.getsize("1.in")
+ans_len = os.path.getsize("1.ans")
+
+source_blocks = 0
+in_blocks = 0
+ans_blocks = 0
+
+if(source_len % 512 != 0):
+    source_blocks = int(source_len / 512) + 1
+else:
+    source_blocks = int(source_len / 512)
+if(in_len % 512 != 0):
+    in_blocks = int(in_len / 512) + 1
+else:
+    in_blocks = int(in_len / 512)
+if(ans_len % 512 != 0):
+    ans_blocks = int(ans_len / 512) + 1
+else:
+    ans_blocks = int(ans_len / 512)
+
+block_nums = source_blocks + in_blocks + ans_blocks + 1
+
+print(source_blocks,in_blocks, ans_blocks)
+
+format =  "<20s5s5s10s10s10s10s10s432s" + str(source_blocks * 512) + "s" + str(in_blocks * 512) + "s" + str(ans_blocks * 512) + "s"
+str_package = struct.pack(format, username.encode('utf-8'), pro_id.encode('utf-8'), type.encode('utf-8'), str(source_len).encode('utf-8'), str(in_len).encode('utf-8'), str(ans_len).encode('utf-8'), time_limit.encode('utf-8'), mem_limit.encode('utf-8'), str(block_nums).encode('utf-8'), source_str.encode('utf-8'), in_str.encode('utf-8'), ans_str.encode('utf-8'))
+s.send(str_package)
+
+result = s.recv(5)
+print(result)
+
+```
 
 ## Compile options
 
@@ -76,4 +128,9 @@
 
 - C：`gcc -O2 -w -static -fmax-errors=3 -std=c11 {file} -lm -o {file}`
 - C++：`g++ -O2 -w -static -fmax-errors=3 -std=c++14 {file} -lm -o {file}`
+
+## Author
+吴磊(天津师范大学计算机科学与技术专业2015级学生)
+[GitHub](https://github.com/wuleiaty)
+[Email](wuleiatso@gmail.com)
 
