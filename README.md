@@ -10,7 +10,7 @@
 + 在`config`文件第一行设置服务器端口
 + 在`config`文件第二行设置判题临时文件存放路径
 + 在项目文件夹中运行`sudo make`命令来构建项目
-+ 运行`sudo judge-server`
++ 运行`sudo ./judge-server`
 
 ## Protocol
 
