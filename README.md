@@ -130,6 +130,5 @@ print(result)
 - C++：`g++ -O2 -w -static -fmax-errors=3 -std=c++14 {file} -lm -o {file}`
 
 ## Author
-[吴磊](https://github.com/wuleiaty)(天津师范大学计算机科学与技术专业2015级学生)  
-邮箱:wuleiatso@gmail.com
+Wu Lei (<a href="mailto:wuleiatso@gmail.com">wuleiatso@gmail.com</a>)
 
